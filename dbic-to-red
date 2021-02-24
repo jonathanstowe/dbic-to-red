@@ -1,0 +1,108 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Template;
+use Path::Class;
+
+use Getopt::Long;
+use Module::Load;
+
+use lib 'lib';
+
+my %options;
+
+my @options = (
+    'schema=s',
+    'outdir=s',
+    'class_prefix=s',
+);
+
+GetOptions(\%options, @options) || die "missing arguments";
+
+load "$options{schema}";
+
+my $d = $options{schema}->connect;
+
+my $dir = dir($options{outdir});
+
+
+my $t = Template->new;
+
+my %type_map = (
+    datetime    =>  'DateTime',
+    timestamp   =>  'DateTime',
+    varchar     =>  'Str',
+    integer     =>  'Int',
+    interval    =>  'Duration',
+    char        =>  'Str',
+    boolean     =>  'Bool',
+    text        =>  'Str',
+    time        =>  'Duration',
+);
+
+
+my $prefix = $options{'class_prefix'};
+my @parts = split /::/, $prefix;
+
+for my $sn ( $d->sources ) {
+    print "$sn \n";
+
+    my @path = split /::/, $sn;
+    unshift @path, @parts;
+
+    $path[-1] .= '.rakumod';
+
+    my $file = $dir->file(@path);
+    $file->dir->mkpath;
+
+    my $h = $file->open('w');
+
+    print $file, "\n";
+    my $source = $d->source($sn);
+    print $source->name, "\n";
+    my $model = {
+        model_name  => "${prefix}::$sn",
+        table_name  =>  $source->name,
+        columns     => [],
+        relations   => [],
+    };
+
+    my $columns = $source->columns_info;
+
+    for my $relname ( $source->relationships ) {
+        my $rel = $source->relationship_info($relname);
+        $rel->{name} = $relname;
+        $rel->{name} =~ s/_/-/g;
+        my $old_prefix = $options{schema};
+        $rel->{source} =~ s/${old_prefix}::(Result::)?/${prefix}::/g;
+        my $fk = (keys %{$rel->{cond}})[0];
+        $fk =~ s/foreign\.//g;
+        $rel->{foreign_key} = $fk;
+        if ( $rel->{attrs}->{accessor} eq 'single' ) {
+            my $fk_column = (keys %{$rel->{attrs}->{fk_columns}})[0];
+            $rel->{foreign_key} = $fk_column;
+            $columns->{$fk_column}->{references} = { model => $rel->{source}, column => $fk };
+            $rel->{sigil} = '$';
+        }
+        else {
+            $rel->{sigil} = '@';
+        }
+        push @{$model->{relations}}, $rel;
+    }
+
+
+
+    for my $col_name ( keys %{$columns} ) {
+        my $column = $columns->{$col_name};
+        $column->{name} = $col_name;
+        $column->{name} =~ s/_/-/g;
+        $column->{column_name} = $col_name;
+        $column->{type} = $type_map{$column->{data_type}};
+        push @{$model->{columns}}, $column;
+    }
+
+    $t->process('red_model.tt', $model, $h);
+    $h->close;
+}

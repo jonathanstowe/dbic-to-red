@@ -1,0 +1,10 @@
+use Red;
+
+model [% model_name %] is table('[% table_name %]') is rw {
+[%+ FOR column IN columns -%]
+    has [% column.type %]	$.[% column.name %] [% IF column.is_auto_increment %]is serial[% ELSIF column.references %]is referencing(model => '[% column.references.model %]', column => '[% column.references.column %]')[% ELSE %]is column('[% column.column_name %]')[% END %];
+[% END -%]
+[%+ FOR relation IN relations -%]
+	has				[% relation.sigil %].[% relation.name %]  is relationship({ .[% relation.foreign_key %] }, model => "[% relation.source %]");
+[% END -%]
+}
