@@ -5,6 +5,6 @@ model [% model_name %] is table('[% table_name %]') is rw {
     has [% column.type %]	$.[% column.name %] [% IF column.is_auto_increment %]is serial[% ELSIF column.references %]is referencing(model => '[% column.references.model %]', column => '[% column.references.column %]')[% ELSE %]is column{ :name<[% column.column_name %]> [% IF column.is_nullable %] , :nullable [% END %]}[% END %];
 [% END -%]
 [%+ FOR relation IN relations -%]
-	has				[% relation.sigil %].[% relation.name %]  is relationship({ .[% relation.foreign_key %] }, model => "[% relation.source %]");
+	has	[% relation.sigil %].[% relation.name %]  is relationship({ .[% relation.foreign_key %] }, model => "[% relation.source %]");
 [% END -%]
 }
