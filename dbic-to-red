@@ -5,7 +5,7 @@ use warnings;
 
 use Template;
 use Path::Class;
-
+use Data::Dumper;
 use Getopt::Long;
 use Module::Load;
 
@@ -100,6 +100,7 @@ for my $sn ( $d->sources ) {
         $column->{name} =~ s/_/-/g;
         $column->{column_name} = $col_name;
         $column->{type} = $type_map{$column->{data_type}};
+        $column->{is_nullable} = $column->{is_nullable};
         push @{$model->{columns}}, $column;
     }
 
