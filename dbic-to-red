@@ -5,7 +5,7 @@ use warnings;
 
 use Template;
 use Path::Class;
-use Data::Dumper;
+
 use Getopt::Long;
 use Module::Load;
 
